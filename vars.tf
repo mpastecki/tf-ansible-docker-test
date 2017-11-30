@@ -5,9 +5,15 @@ variable "AWS_SECRET_KEY" {}
 variable "AWS_REGION" {
   default = "eu-west-1"
 }
+
 variable "PATH_TO_PRIVATE_KEY" {
   default = "/home/mpastecki/.ssh/id_rsa"
 }
+
+variable "PRIVATE_KEY_FILE_NAME" {
+  default = "id_rsa"
+}
+
 variable "PATH_TO_PUBLIC_KEY" {
   default = "/home/mpastecki/.ssh/id_rsa.pub"
 }

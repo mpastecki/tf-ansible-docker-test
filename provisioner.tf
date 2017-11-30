@@ -10,6 +10,9 @@ resource "null_resource" "smanager_provisioner" {
 
   connection {
     host	= "${aws_instance.swarm-manager.public_ip}"
+    user = "ubuntu"
+    private_key = "${file(var.PATH_TO_PRIVATE_KEY)}"
+    agent = false
   }
 
   #############################################################
@@ -17,14 +20,28 @@ resource "null_resource" "smanager_provisioner" {
   #############################################################
 
   provisioner "file" {
+    source = "${var.PATH_TO_PRIVATE_KEY}"
+    destination = "/home/ubuntu/.ssh/${var.PRIVATE_KEY_FILE_NAME}"
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo mkdir -p /home/ubuntu/ansible/playbooks/inventories/${var.ansible_inventory_name}/",
+      "sudo chown -R ubuntu:ubuntu /home/ubuntu/ansible",
+      "sudo chown ubuntu:ubuntu /home/ubuntu/.ssh/${var.PRIVATE_KEY_FILE_NAME}",
+      "sudo chmod 600 /home/ubuntu/.ssh/${var.PRIVATE_KEY_FILE_NAME}"
+    ]
+  }
+
+  provisioner "file" {
     source	= "playbooks"
-    destination	= "/etc/ansible/playbooks/"
+    destination	= "/home/ubuntu/ansible/"
   }
 
   # Generate Ansible hosts/inventory file from template
   provisioner "file" {
     content     = "${data.template_file.ansible_hosts.rendered}"
-    destination = "/etc/ansible/playbooks/inventories/${var.ansible_inventory_name}/hosts"
+    destination = "/home/ubuntu/ansible/playbooks/inventories/${var.ansible_inventory_name}/hosts"
   }
 
   #############################################################
@@ -36,12 +53,12 @@ resource "null_resource" "smanager_provisioner" {
 <<EOT
 #!/bin/bash
 
-# Cleanup code to run on exit (success or failure)
-function finish {
-  # Remove the uploaded deployment directories
-  sudo rm -rf "/etc/ansible/playbooks"
-}
-trap finish EXIT
+## Cleanup code to run on exit (success or failure)
+#function finish {
+#  # Remove the uploaded deployment directories
+#  sudo rm -rf "/home/ubuntu/ansible/playbooks"
+#}
+#trap finish EXIT
 
 # Install Ansible and dependencies
 echo ""
@@ -58,15 +75,22 @@ export ANSIBLE_HOST_KEY_CHECKING=False
 # Remove site.retry file from a previously failed Ansible run
 echo ""
 echo "$(date) => [INFO]  => Checking for site.retry file from a previously failed Ansible run."
-test -e '/etc/ansible/playbooks/site.retry' && echo "$(date) => [INFO]  => Removing site.retry file from previously failed run."
-test -e '/etc/ansible/playbooks/site.retry' && sudo rm -f '/etc/ansible/playbooks/site.retry'
+test -e '/home/ubuntu/ansible/playbooks/site.retry' && echo "$(date) => [INFO]  => Removing site.retry file from previously failed run."
+test -e '/home/ubuntu/ansible/playbooks/site.retry' && sudo rm -f '/home/ubuntu/ansible/playbooks/site.retry'
+
+# Create ansible playbooks directory
+echo ""
+echo "$(date) => [INFO]  => Checking for playbooks directoy."
+test -d '/home/ubuntu/ansible/playbooks' && echo "Folder exists" || mkdir -p '/home/ubuntu/ansible/playbooks'
 
 # Perform Ansible run to configure VMs
 echo ""
 echo "$(date) => [INFO]  => Perform Ansible run to configure VMs."
-cd /etc/ansible/playbooks && \
+cd /home/ubuntu/ansible/playbooks && \
 ansible-playbook swarmplaybook.yml \
---inventory-file=inventories/${var.ansible_inventory_name}/hosts
+--inventory-file=inventories/${var.ansible_inventory_name}/hosts \
+--key-file="/home/ubuntu/.ssh/${var.PRIVATE_KEY_FILE_NAME}"
+EOT
     ]
   }
 }

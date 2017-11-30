@@ -22,8 +22,8 @@
     gather_facts: false
     become: true
     vars:
-            token: "{{ hostvars[groups['masters'][0]]['worker_token']['stdout'] }}"
-            master: "{{ hostvars[groups['masters'][0]]['inventory_hostname'] }}"
+            token: "{{ hostvars[groups['docker_swarm_manager_servers'][0]]['worker_token']['stdout'] }}"
+            master: "{{ hostvars[groups['docker_swarm_manager_servers'][0]]['inventory_hostname'] }}"
     tasks:
             - name: Join cluster as a worker
               command: docker swarm join --token {{ token }} {{ master }}:2377

@@ -1,5 +1,23 @@
+# Get the list of official Canonical Ubuntu 16.04 AMIs
+data "aws_ami" "ubuntu-1604" {
+  most_recent = true
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-*"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+
+  owners = ["099720109477"] # Canonical
+}
+
 resource "aws_instance" "swarm-manager" {
-  ami           = "${lookup(var.AMIS, var.AWS_REGION)}"
+#  ami           = "${lookup(var.AMIS, var.AWS_REGION)}"
+  ami = "${data.aws_ami.ubuntu-1604.id}"
   instance_type = "t2.micro"
 
   # the VPC subnet
@@ -29,7 +47,9 @@ resource "aws_instance" "swarm-manager" {
       "sudo apt-get update",
       "sudo apt-get install linux-image-extra-$(uname -r) -y",
       "sudo apt-get install docker-engine -y",
-      "sudo service docker start"
+      "sudo service docker start",
+      "sudo mkdir -p /home/ubuntu/ansible/playbooks/inventories",
+      "sudo chown -R ubuntu:ubuntu /home/ubuntu/ansible"
     ]
   }
 }
@@ -66,7 +86,8 @@ resource "aws_instance" "swarm-worker" {
       "sudo apt-get update",
       "sudo apt-get install linux-image-extra-$(uname -r) -y",
       "sudo apt-get install docker-engine -y",
-      "sudo service docker start"
+      "sudo service docker start",
+      "sudo apt-get install python -y"
     ]
   }
 
@@ -78,7 +99,7 @@ resource "aws_instance" "swarm-worker" {
 data "template_file" "ansible_hosts" {
   template = "${file("templates/ansiblehosts.tpl")}"
   vars = {
-    swarmmanager	= "localhost"
+    swarmmanager	= "${aws_instance.swarm-manager.private_ip}"
     snodes_addresses	= "${join("\n", aws_instance.swarm-worker.*.private_dns)}"
   }
 }
