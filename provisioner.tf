@@ -90,6 +90,15 @@ cd /home/ubuntu/ansible/playbooks && \
 ansible-playbook swarmplaybook.yml \
 --inventory-file=inventories/${var.ansible_inventory_name}/hosts \
 --key-file="/home/ubuntu/.ssh/${var.PRIVATE_KEY_FILE_NAME}"
+
+# Initialize redis service
+echo ""
+echo "$(date) => [INFO]  => Perform Ansible run to start service."
+cd /home/ubuntu/ansible/playbooks && \
+ansible-playbook swarmserviceplaybook.yml \
+--inventory-file=inventories/${var.ansible_inventory_name}/hosts \
+--key-file="/home/ubuntu/.ssh/${var.PRIVATE_KEY_FILE_NAME}" \
+--extra-vars 'docker_service=${var.docker_service}'
 EOT
     ]
   }

@@ -1,0 +1,16 @@
+---
+  - name: Initialize service if not already done
+    become: true
+    hosts: docker_swarm_manager_servers
+    remote_user: ubuntu
+    tasks:
+
+      - name: Gather service info
+        command: docker service inspect {{ docker_service }} --pretty
+        register: docker_service_info
+        failed_when: "'Failed' in docker_service_info.stderr"
+        changed_when: False
+
+      - name: Create Redis Service
+        command: docker service create --name {{ docker_service }} --replicas 6 --publish 6379:6379 redis
+        when: "docker_service_info.stdout.find('Name:		redis') == -1"

@@ -38,3 +38,8 @@ variable "cluster_node_count" {
 variable "ansible_inventory_name" {
     default = "test"
 }
+
+variable "docker_service" {
+  description = "Docker service to initialize"
+  default = "redis"
+}
