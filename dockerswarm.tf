@@ -29,11 +29,7 @@ resource "aws_instance" "swarm-manager" {
       "sudo apt-get update",
       "sudo apt-get install linux-image-extra-$(uname -r) -y",
       "sudo apt-get install docker-engine -y",
-      "sudo service docker start",
-      "sudo apt-get install software-properties-common",
-      "sudo apt-add-repository ppa:ansible/ansible",
-      "sudo apt-get update",
-      "sudo apt-get install ansible"
+      "sudo service docker start"
     ]
   }
 }
