@@ -27,3 +27,8 @@ variable "cluster_node_count" {
     description = "Number of node instances for the swarm cluster."
     default = 3
 }
+
+# Name of the ansible inventory to use when provisioning the VMs
+variable "ansible_inventory_name" {
+    default = "test"
+}

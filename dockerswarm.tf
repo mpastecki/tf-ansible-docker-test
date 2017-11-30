@@ -1,7 +1,6 @@
 resource "aws_instance" "swarm-manager" {
   ami           = "${lookup(var.AMIS, var.AWS_REGION)}"
   instance_type = "t2.micro"
-  count = "${var.cluster_manager_count}"
 
   # the VPC subnet
   subnet_id = "${aws_subnet.main-public-1.id}"
@@ -19,7 +18,7 @@ resource "aws_instance" "swarm-manager" {
   }
 
   tags {
-    Name = "swarmmanager-${count.index}"
+    Name = "swarmmanager"
   }
 
   provisioner "remote-exec" {
@@ -30,13 +29,11 @@ resource "aws_instance" "swarm-manager" {
       "sudo apt-get update",
       "sudo apt-get install linux-image-extra-$(uname -r) -y",
       "sudo apt-get install docker-engine -y",
-      "sudo service docker start"
-    ]
-  }
-
-  provisioner "remote-exec" {
-    inline = [
-      "if [ ${count.index} -eq 0 ]; then sudo docker swarm init --advertise-addr ${aws_instance.swarm-manager.0.private_ip}; else sudo docker swarm join ${aws_instance.swarm-manager.0.private_ip}:2377 --token $(docker -H ${aws_instance.swarm-manager.0.private_ip} swarm join-token -q manager); fi"
+      "sudo service docker start",
+      "sudo apt-get install software-properties-common",
+      "sudo apt-add-repository ppa:ansible/ansible",
+      "sudo apt-get update",
+      "sudo apt-get install ansible"
     ]
   }
 }
@@ -77,13 +74,15 @@ resource "aws_instance" "swarm-worker" {
     ]
   }
 
-  provisioner "remote-exec" {
-    inline = [
-      "sudo docker swarm join --token $(docker -H ${aws_instance.swarm-manager.0.private_ip} swarm join-token -q worker) ${aws_instance.swarm-manager.0.private_ip}:2377"
-    ]
-  }
-
   depends_on = [
     "aws_instance.swarm-manager"
   ]
+}
+
+data "template_file" "ansible_hosts" {
+  template = "${file("templates/ansiblehosts.tpl")}"
+  vars = {
+    swarmmanager	= "localhost"
+    snodes_addresses	= "${join("\n", aws_instance.swarm-worker.*.private_dns)}"
+  }
 }

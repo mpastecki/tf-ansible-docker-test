@@ -1,0 +1,36 @@
+---
+  - name: Init Swarm Master
+    hosts: docker_swarm_manager_servers
+    gather_facts: False
+    remote_user: ubuntu
+    become: true
+    tasks:
+            - name: Swarm init
+              command: docker swarm init --advertise-addr {{ inventory_hostname }}
+
+            - name: Get worker token
+              command: docker swarm join-token -q worker
+              register: worker_token
+
+            - name: Get manager token
+              command: docker swarm join-token -q manager
+              register: manager_token
+
+  - name: Join swarm cluster
+    hosts: docker_swarm_worker_servers
+    remote_user: ubuntu
+    gather_facts: false
+    become: true
+    vars:
+            token: "{{ hostvars[groups['masters'][0]]['worker_token']['stdout'] }}"
+            master: "{{ hostvars[groups['masters'][0]]['inventory_hostname'] }}"
+    tasks:
+            - name: Join cluster as a worker
+              command: docker swarm join --token {{ token }} {{ master }}:2377
+              register: worker
+
+            - name: Show results
+              debug: var=worker.stdout
+
+            - name: Show errors
+              debug: var=worker.stderr
