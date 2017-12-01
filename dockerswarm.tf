@@ -57,7 +57,7 @@ resource "aws_instance" "swarm-manager" {
 resource "aws_instance" "swarm-worker" {
   ami           = "${lookup(var.AMIS, var.AWS_REGION)}"
   instance_type = "t2.micro"
-  count = "${var.cluster_node_count}"
+  count = "${var.count["swarm-n"]}"
 
   # the VPC subnet
   subnet_id = "${aws_subnet.main-public-1.id}"

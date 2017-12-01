@@ -17,6 +17,7 @@ variable "PRIVATE_KEY_FILE_NAME" {
 variable "PATH_TO_PUBLIC_KEY" {
   default = "/home/mpastecki/.ssh/id_rsa.pub"
 }
+
 variable "AMIS" {
   type = "map"
   default = {
@@ -24,14 +25,12 @@ variable "AMIS" {
   }
 }
 
-variable "cluster_manager_count" {
-    description = "Number of manager instances for the swarm cluster."
-    default = 1
-}
-
-variable "cluster_node_count" {
-    description = "Number of node instances for the swarm cluster."
-    default = 3
+variable "count" {
+  type = "map"
+  default = {
+    "swarm-m" = 1
+    "swarm-n" = 3
+  }
 }
 
 # Name of the ansible inventory to use when provisioning the VMs

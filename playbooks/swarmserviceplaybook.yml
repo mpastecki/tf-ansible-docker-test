@@ -13,4 +13,8 @@
 
       - name: Create Redis Service
         command: docker service create --name {{ docker_service }} --replicas 6 --publish 6379:6379 redis
-        when: "docker_service_info.stdout.find('Name:		redis') == -1"
+        when: "docker_service_info.stdout.find('rror: no such service') == 1"
+
+      - name: Scale up Redis Service
+        command: docker service scale {{ docker_service }}=6
+        when: "docker_service_info.stdout.find('Replicas:       6') == -1"
