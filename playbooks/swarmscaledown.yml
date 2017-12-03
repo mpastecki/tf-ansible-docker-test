@@ -1,0 +1,86 @@
+---
+  - name: set variables
+    become: true
+    remote_user: ubuntu
+    hosts: docker_swarm_servers
+    tasks:
+
+          - block:
+                - name: INIT | Check if service exists
+                  shell: docker inspect {{ docker_service }} > /dev/null 2>&1 && echo true || echo false
+                  register: service_exists
+
+                - name: Print service_exists
+                  debug:
+                          msg: "Service exists: {{ service_exists.stdout }}, inv_hm: {{ inventory_hostname }}"
+
+                - name: INIT | Check replicas number
+                  shell: docker inspect {{ docker_service }} --format={{ '{{' }}.Spec.Mode.Replicated.Replicas{{ '}}' }}
+                  register: replicas_number
+
+                - name: Print replicas_number
+                  debug:
+                          msg: "Replicas number: {{ replicas_number.stdout }}, inv_hm: {{ inventory_hostname }}"
+
+                - name: INIT | Check if node is worker
+                  shell: if [ $(docker inspect {{ node_name }} --format={{ '{{' }}.Spec.Role{{ '}}' }}) = worker ]; then echo true; else echo false; fi
+                  register: is_worker
+
+                - name: Print is_worker
+                  debug:
+                          msg: "Is worker: {{ is_worker.stdout }}, inv_hm: {{ inventory_hostname }}"
+
+            when: "'docker_swarm_manager_servers' in group_names"
+    
+          - block:
+                - name: INIT | Check if node is part of swarm from the node
+                  shell: if [ $(docker info --format {{ '{{' }}.Swarm.LocalNodeState{{ '}}' }}) = active ]; then echo true; else echo false; fi
+                  register: is_part_of_swarm_locally
+
+                - name: Print is_part_of_swarm_locally
+                  debug:
+                          msg: "Is part of swarm locally: {{ is_part_of_swarm_locally.stdout }}, inv_hm: {{ inventory_hostname }}"
+
+            when: inventory_hostname == node_name
+
+  - name: DOCKER | Scale down service, remove node, scale up service
+    become: true
+    remote_user: ubuntu
+    hosts: docker_swarm_servers
+    tasks:
+            - name: debugs
+              debug:
+                      msg: "{{ hostvars[node_name]['is_part_of_swarm_locally']['stdout'] }}"
+              when: inventory_hostname == node_name
+
+            - name: DOCKER | scale down service
+              shell: docker service scale {{ docker_service }}=0
+              when: hostvars[manager]['service_exists']['stdout']|bool == true and 'docker_swarm_manager_servers' in group_names
+
+            - name: DOCKER | leave swarm from worker
+              shell: docker swarm leave
+              when: hostvars[node_name]['is_part_of_swarm_locally']['stdout']|bool == true and inventory_hostname == node_name
+
+            - pause:
+                    seconds: 20
+
+            - name: DOCKER | remove node from swarm
+              shell: docker node rm {{ node_name }}
+              when: hostvars[manager]['is_worker']['stdout']|bool == true and 'docker_swarm_manager_servers' in group_names
+
+            - pause:
+                    seconds: 10
+
+            - name: DOCKER | check number of nodes
+              shell: docker info -f {{ '{{' }}.Swarm.Nodes{{ '}}' }}
+              register: nodes_number
+              when: "'docker_swarm_manager_servers' in group_names"
+
+            - name: debug nodes_number
+              debug:
+                      msg: "number of nodes: {{ nodes_number.stdout }}, {{ (nodes_number.stdout|int * 2)|int|abs }}"
+              when: "'docker_swarm_manager_servers' in group_names"
+
+            - name: DOCKER | scale up service
+              shell:  docker service scale {{ docker_service }}={{ (nodes_number.stdout|int * 2)|int|abs }}
+              when: hostvars[manager]['service_exists']['stdout']|bool == true and hostvars[manager]['replicas_number']['stdout']|int ==  0 and 'docker_swarm_manager_servers' in group_names
