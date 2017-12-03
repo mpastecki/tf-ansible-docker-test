@@ -91,36 +91,6 @@ resource "aws_instance" "swarm-worker" {
     ]
   }
 
-#  provisioner "remote-exec" {
-#    when = "destroy"
-#    connection {
-#      user = "ubuntu"
-#      private_key = "${file("${var.PATH_TO_PRIVATE_KEY}")}"
-#      agent = false
-#      host = "${self.public_ip}"
-#    }
-#    inline = [
-#      "echo '----------------------------------------'",
-#      "echo 'my hostname ${self.private_ip}'",
-#      "sleep 10s"
-#    ]
-#  }
-
-#  provisioner "remote-exec" {
-#    when = "destroy"
-#    connection {
-#      user = "ubuntu"
-#      private_key = "${file("${var.PATH_TO_PRIVATE_KEY}")}"
-#      agent = false
-#      host = "${aws_instance.swarm-manager.0.public_ip}"
-#    }
-#    inline = [
-#      "echo '----------------------------------------'",
-#      "echo 'my hostname ${aws_instance.swarm-manager.0.public_ip}'",
-#      "sleep 10s"
-#    ]
-#  }
-
   depends_on = [
     "aws_instance.swarm-manager"
   ]
@@ -130,6 +100,6 @@ data "template_file" "ansible_hosts" {
   template = "${file("templates/ansiblehosts.tpl")}"
   vars = {
     swarmmanager	= "${aws_instance.swarm-manager.private_ip}"
-    snodes_addresses	= "${join("\n", aws_instance.swarm-worker.*.private_dns)}"
+    snodes_addresses   = "${join("\n", aws_instance.swarm-worker.*.private_dns)}"
   }
 }

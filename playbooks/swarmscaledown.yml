@@ -5,6 +5,10 @@
     hosts: docker_swarm_servers
     tasks:
 
+          - name: INIT | Check my docker name
+            shell: docker info --format {{ '{{' }}.Name{{ '}}' }}
+            register: my_docker_name
+
           - block:
                 - name: INIT | Check if service exists
                   shell: docker inspect {{ docker_service }} > /dev/null 2>&1 && echo true || echo false
@@ -23,7 +27,7 @@
                           msg: "Replicas number: {{ replicas_number.stdout }}, inv_hm: {{ inventory_hostname }}"
 
                 - name: INIT | Check if node is worker
-                  shell: if [ $(docker inspect {{ node_name }} --format={{ '{{' }}.Spec.Role{{ '}}' }}) = worker ]; then echo true; else echo false; fi
+                  shell: if [ $(docker inspect {{ hostvars[node_name]['my_docker_name']['stdout'] }} --format={{ '{{' }}.Spec.Role{{ '}}' }}) = worker ]; then echo true; else echo false; fi
                   register: is_worker
 
                 - name: Print is_worker
@@ -65,7 +69,7 @@
                     seconds: 20
 
             - name: DOCKER | remove node from swarm
-              shell: docker node rm {{ node_name }}
+              shell: docker node rm {{ hostvars[node_name]['my_docker_name']['stdout'] }}
               when: hostvars[manager]['is_worker']['stdout']|bool == true and 'docker_swarm_manager_servers' in group_names
 
             - pause:
